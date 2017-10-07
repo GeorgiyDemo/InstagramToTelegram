@@ -33,8 +33,14 @@ def getter(url):
 	return result
 
 #Telegram 
-def start(bot, photo_url, caption_url, username):
-	bot.sendPhoto(chat_id=channel_name, photo=photo_url, caption="От @"+username+"\n"+caption_url)
+def start(bot, media_json, username):
+	caption_url = media_json["caption"]
+
+	if (media_json["is_video"]==False):
+		bot.sendPhoto(chat_id=channel_name, photo=media_json["thumbnail_src"], caption="От @"+username+"\n"+caption_url)
+	
+	if (media_json["is_video"]==True):
+		bot.sendVideo(chat_id=channel_name, video=getter(username_url+media_json["code"])["entry_data"]["PostPage"][0]["graphql"]["shortcode_media"]["video_url"], caption="От @"+username+"\n"+caption_url)
 
 InputWork()
 
@@ -44,14 +50,13 @@ while True:
 	tag_page = result["entry_data"]["TagPage"][0]["tag"]
 	media = tag_page["media"]["nodes"]
 	checker = tag_page["media"]
-	
+
 	if ((media[0]["id"]!=global_id) and (media[0]["id"]!=previous_global_id)):
 		OutWork(media[0]["id"],'DATA')
 		InputWork()
 
 		code = media[0]["code"]
 		username = getter(username_url+code)["entry_data"]["PostPage"][0]["graphql"]["shortcode_media"]["owner"]["username"]
-		print("РАБОТА")
-		start(bot,media[0]["thumbnail_src"],media[0]["caption"],username)
+		start(bot,media[0],username)
 
 	time.sleep(10)
