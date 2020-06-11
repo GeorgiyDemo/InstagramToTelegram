@@ -1,0 +1,8 @@
+version: '3'
+services:
+  sender:
+    build: ./sender/
+    environment: 
+      TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
+      TELEGRAM_CHANNELNAME: ${TELEGRAM_CHANNELNAME}
+      INSTAGRAM_TAGNAME: ${INSTAGRAM_TAGNAME}
