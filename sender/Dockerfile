@@ -20,8 +20,8 @@ RUN echo $TZ > /etc/timezone && \
   dpkg-reconfigure -f noninteractive tzdata && \
   apt-get clean
 
-RUN \
-  apt-get install -y python3 python3-pip python3-dev
+RUN apt-get install -y python3 python3-pip python3-dev
+RUN apt-get install -y libxml2-dev libxslt-dev
 
 ADD . /app
 WORKDIR /app
