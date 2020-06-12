@@ -17,8 +17,6 @@ services:
       - ALLOW_EMPTY_PASSWORD=no
       - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
       - REDIS_PASSWORD=${REDIS_PASSWORD}
-    ports:
-      - 6379:6379
     labels:
       kompose.service.type: nodeport
     volumes:
