@@ -3,4 +3,4 @@ requests==2.22.0
 python_telegram_bot==12.7
 redis==3.5.2
 beautifulsoup4==4.9.1
-telegram==0.0.1
+lxml==4.5.1
