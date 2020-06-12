@@ -10,47 +10,45 @@ from bs4 import BeautifulSoup
 
 
 class Redis:
-    """
-    Класс для удобной работы с Redis
-    В Redis хранятся ассоциации: media_id -> ник пользователя
-    """
+    """For Redis DB"""
 
-    def __init__(self, r_host, r_passwd):
-        self.r_table = redis.Redis(host=r_host, port=6379, decode_responses=True, db=0, password=r_passwd)
+    def __init__(self, r_passwd):
+        self.r_table = redis.Redis(host="redis", port=6379, decode_responses=True, db=0, password=r_passwd)
 
     def get_data(self):
-        """Получаем данные с таблицы, отдаем в виде dict"""
+        """Getting list with media_ids from DB"""
         lst = []
         for key in self.r_table.keys():
             lst.append(key)
         return lst
 
     def set_data(self, key, value):
-        """Записываем данные в таблицу"""
+        """Writing new data to DB"""
         self.r_table.set(key, value)
 
     @property
     def data(self):
+        """getter"""
         return self.get_data()
 
     @data.setter
     def data(self, ddict):
+        """setter"""
         for sub in ddict.items():
             self.set_data(*sub)
 
 
 class Instagram2Telegram:
-    """Класс для перекидывания постов по тегу """
 
-    def __init__(self, token, tag, channel_name, r_host, r_passwd):
+    def __init__(self, token, tag, channel_name, r_passwd):
 
-        # Соединение с redis
-        self.r_obj = Redis(r_host, r_passwd)
-        # Бот телеграма
+        # Redis connector
+        self.r_obj = Redis(r_passwd)
+        # Telegram bot
         self.bot = telegram.Bot(token)
-        # URL пользователя
+        # User's URL
         self.username_url = "https://www.instagram.com/p/"
-        # URL общий
+        # Main URL
         self.mainurl = "https://instagram.com/explore/tags/" + tag
         self.channel_name = channel_name
 
@@ -64,33 +62,34 @@ class Instagram2Telegram:
 
     def processing(self):
         """
-        Вылавливание постов с инсты
+        Main logic:
+        1. Get saved media_ids form Redis
+        2. Get new_media_id for the last Instagram post with tag 
+        3. Compare that new_media_id is not in media_ids
+        4. If step 3 was True, post media to Telegram channel & add new_media_id to Redis 
         """
-        # Получаем данные с Redis
+
+        # Getting data from Redis
         media_ids = self.r_obj.data
 
-        # Получаем данные с url
+        # Getting data from URL via self.getter
         result = self.getter(self.mainurl)
         tag_page = result["entry_data"]["TagPage"][0]["graphql"]["hashtag"]["edge_hashtag_to_media"]["edges"][0]["node"]
-        media_id = tag_page["id"]
+        new_media_id = tag_page["id"]
 
-        # Если id файла нет в списке всех файлов, то значит это новый файл
-        if media_id not in media_ids:
+        # If new_media_id is not in Redis --> this is a new photo/video that still not in Telegram
+        if new_media_id not in media_ids:
             code = tag_page["shortcode"]
-            username = \
-            self.getter(self.username_url + code)["entry_data"]["PostPage"][0]["graphql"]["shortcode_media"]["owner"][
-                "username"]
+            username = self.getter(self.username_url + code)["entry_data"]["PostPage"][0]["graphql"]["shortcode_media"]["owner"]["username"]
 
-            # Добавляем в Redis
-            self.r_obj.data = {media_id: username}
+            # Add new_media_id to Redis
+            self.r_obj.data = {new_media_id: username}
 
-            # Кидаем пост в Telegram
+            # Post media to Telegram
             self.send_telegram(tag_page, username)
 
     def getter(self, url):
-        """
-        Парсинг страницы с вложением 
-        """
+        """Page dumper with BeautifulSoup & lxml"""
         res = requests.get(url)
         soup = BeautifulSoup(res.text, "lxml")
         script_tag = soup.find("script", text=re.compile("window\._sharedData"))
@@ -99,21 +98,16 @@ class Instagram2Telegram:
         return result
 
     def send_telegram(self, media_json, username):
-        """
-        Отправка вложения в Telegram
-        """
+        """Post media to Telegram"""
 
         media_text = media_json["edge_media_to_caption"]["edges"][0]["node"]["text"]
         media_url = media_json["display_url"]
 
+        #Long text is not cool
         if (len(media_text) > 201):
             media_text = ""
 
-        if not media_json["is_video"]:
-            caption = "By @" + username + "\n" + media_text
-            media_url = media_json["thumbnail_src"]
-            self.bot.sendPhoto(chat_id=self.channel_name, photo=media_url, caption=caption)
-
+        #if video
         if media_json["is_video"]:
             caption = "By @" + username + "\n" + media_text
 
@@ -121,15 +115,23 @@ class Instagram2Telegram:
             media_url = buf_data["entry_data"]["PostPage"][0]["graphql"]["shortcode_media"]["video_url"]
 
             self.bot.sendVideo(chat_id=self.channel_name, video=media_url, caption=caption)
+        
+        #if photo
+        else:
+            caption = "By @" + username + "\n" + media_text
+            media_url = media_json["thumbnail_src"]
+            self.bot.sendPhoto(chat_id=self.channel_name, photo=media_url, caption=caption)
 
 
 def main():
+
+    #Getting data from .env
     token = os.getenv('TELEGRAM_TOKEN', None)
     channel_name = os.getenv('TELEGRAM_CHANNELNAME', None)
     tag = os.getenv('INSTAGRAM_TAGNAME', None)
-    r_host = os.getenv('REDIS_HOST', None)
     r_passwd = os.getenv('REDIS_PASSWORD', None)
-    Instagram2Telegram(token, tag, channel_name, r_host, r_passwd)
+
+    Instagram2Telegram(token, tag, channel_name, r_passwd)
 
 
 if __name__ == "__main__":
