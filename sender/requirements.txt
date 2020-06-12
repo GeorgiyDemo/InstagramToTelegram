@@ -1,6 +1,6 @@
-bs4==0.0.1
+wget==3.2
 requests==2.22.0
-selenium==3.141.0
-pytesseract==0.2.9
-lxml==4.4.1
-PyYAML==5.1.2
+python_telegram_bot==12.7
+redis==3.5.2
+beautifulsoup4==4.9.1
+telegram==0.0.1

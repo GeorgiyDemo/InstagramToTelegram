@@ -6,3 +6,16 @@ services:
       TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
       TELEGRAM_CHANNELNAME: ${TELEGRAM_CHANNELNAME}
       INSTAGRAM_TAGNAME: ${INSTAGRAM_TAGNAME}
+    restart: always
+  
+  redis:
+    image: 'bitnami/redis:latest'
+    environment:
+      ALLOW_EMPTY_PASSWORD: no
+      REDIS_DISABLE_COMMANDS: FLUSHDB,FLUSHALL
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    labels:
+      kompose.service.type: nodeport
+    volumes:
+      - './redis/redis_data/:/bitnami/redis/data'
+    restart: always
