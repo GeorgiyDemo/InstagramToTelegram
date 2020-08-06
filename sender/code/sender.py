@@ -13,7 +13,9 @@ class Redis:
     """For Redis DB"""
 
     def __init__(self, r_passwd):
-        self.r_table = redis.Redis(host="redis", port=6379, decode_responses=True, db=0, password=r_passwd)
+        self.r_table = redis.Redis(
+            host="redis", port=6379, decode_responses=True, db=0, password=r_passwd
+        )
 
     def get_data(self):
         """Getting list with media_ids from DB"""
@@ -39,7 +41,6 @@ class Redis:
 
 
 class Instagram2Telegram:
-
     def __init__(self, token, tag, channel_name, r_passwd):
 
         # Redis connector
@@ -74,13 +75,17 @@ class Instagram2Telegram:
 
         # Getting data from URL via self.getter
         result = self.getter(self.mainurl)
-        tag_page = result["entry_data"]["TagPage"][0]["graphql"]["hashtag"]["edge_hashtag_to_media"]["edges"][0]["node"]
+        tag_page = result["entry_data"]["TagPage"][0]["graphql"]["hashtag"][
+            "edge_hashtag_to_media"
+        ]["edges"][0]["node"]
         new_media_id = tag_page["id"]
 
         # If new_media_id is not in Redis --> this is a new photo/video that still not in Telegram
         if new_media_id not in media_ids:
             code = tag_page["shortcode"]
-            username = self.getter(self.username_url + code)["entry_data"]["PostPage"][0]["graphql"]["shortcode_media"]["owner"]["username"]
+            username = self.getter(self.username_url + code)["entry_data"]["PostPage"][
+                0
+            ]["graphql"]["shortcode_media"]["owner"]["username"]
 
             # Add new_media_id to Redis
             self.r_obj.data = {new_media_id: username}
@@ -103,33 +108,39 @@ class Instagram2Telegram:
         media_text = media_json["edge_media_to_caption"]["edges"][0]["node"]["text"]
         media_url = media_json["display_url"]
 
-        #Long text is not cool
-        if (len(media_text) > 201):
+        # Long text is not cool
+        if len(media_text) > 201:
             media_text = ""
 
-        #if video
+        # if video
         if media_json["is_video"]:
             caption = "By @" + username + "\n" + media_text
 
             buf_data = getter(self.username_url + media_json["shortcode"])
-            media_url = buf_data["entry_data"]["PostPage"][0]["graphql"]["shortcode_media"]["video_url"]
+            media_url = buf_data["entry_data"]["PostPage"][0]["graphql"][
+                "shortcode_media"
+            ]["video_url"]
 
-            self.bot.sendVideo(chat_id=self.channel_name, video=media_url, caption=caption)
-        
-        #if photo
+            self.bot.sendVideo(
+                chat_id=self.channel_name, video=media_url, caption=caption
+            )
+
+        # if photo
         else:
             caption = "By @" + username + "\n" + media_text
             media_url = media_json["thumbnail_src"]
-            self.bot.sendPhoto(chat_id=self.channel_name, photo=media_url, caption=caption)
+            self.bot.sendPhoto(
+                chat_id=self.channel_name, photo=media_url, caption=caption
+            )
 
 
 def main():
 
-    #Getting data from .env
-    token = os.getenv('TELEGRAM_TOKEN', None)
-    channel_name = os.getenv('TELEGRAM_CHANNELNAME', None)
-    tag = os.getenv('INSTAGRAM_TAGNAME', None)
-    r_passwd = os.getenv('REDIS_PASSWORD', None)
+    # Getting data from .env
+    token = os.getenv("TELEGRAM_TOKEN", None)
+    channel_name = os.getenv("TELEGRAM_CHANNELNAME", None)
+    tag = os.getenv("INSTAGRAM_TAGNAME", None)
+    r_passwd = os.getenv("REDIS_PASSWORD", None)
 
     Instagram2Telegram(token, tag, channel_name, r_passwd)
 
