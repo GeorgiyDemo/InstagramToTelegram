@@ -1,5 +1,5 @@
 wget==3.2
-requests==2.22.0
+requests==2.31.0
 python_telegram_bot==12.7
 redis==3.5.2
 beautifulsoup4==4.9.1
